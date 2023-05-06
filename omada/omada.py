@@ -305,9 +305,9 @@ class Omada:
 		raise OmadaError(json)
 	
 	##
-	## Get Hotspot Portals
+	## Get All Hotspot Portals
 	##
-	def getHotspotPortal(self, site=None):
+	def getAllPortals(self, site=None):
 		return self.__get( f'/hotspot/sites/{self.__findSiteId(site)}/setting/portals' )
 	
 	##
@@ -325,7 +325,7 @@ class Omada:
 	##
 	## Create a Voucher
 	##
-	def createHotspotVoucher(self, json, site=None):
+	def createVoucher(self, json, site=None):
 		return self.__post( f'/hotspot/sites/{self.__findSiteId(site)}/vouchers', json = json)
 	
 	##
