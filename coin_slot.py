@@ -42,10 +42,8 @@ class CoinSlot:
             while True:
                 self.lcd_sleep()
                 time.sleep(1)
-
         except Exception:
             print(traceback.format_exc())
-
         finally:
             # Clean up the GPIO settings
             GPIO.cleanup()

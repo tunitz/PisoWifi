@@ -1,6 +1,5 @@
 from omada import Omada
 import traceback
-import logging
 import time
 
 # Checks if Omada API is ready
