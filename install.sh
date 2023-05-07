@@ -31,20 +31,30 @@ fi
 # git clone https://github.com/tunitz/PisoWifi.git
 
 chmod +x coin_slot.py
-chmod +x run.sh
 
-# Define the path to the startup script
-startup_script="/root/PisoWifi/run.sh"
+# Set the file name and path
+file_path="/lib/systemd/system/coin_slot.service"
 
-# Check if the startup script is already in the rc.local file
-if grep -q "$startup_script" /etc/rc.local; then
-    echo "Startup script already exists in rc.local"
+# Check if the file already exists
+if [ -f "$file_path" ]; then
+  echo "Service file already exists"
 else
-    # Add the startup script to the rc.local file
-    sed -i "/exit 0/d" /etc/rc.local
-    echo "$startup_script &" >> /etc/rc.local
-    echo "exit 0" >> /etc/rc.local
-    echo "Startup script added to rc.local"
+  # Write the file contents
+  echo "[Unit]" > $file_path
+  echo "Description=Coin Slot Python" >> $file_path
+  echo "After=multi-user.target" >> $file_path
+  echo "" >> $file_path
+  echo "[Service]" >> $file_path
+  echo "Type=idle" >> $file_path
+  echo "ExecStart=/usr/bin/python3 /root/PisoWifi/coin_slot.py > /root/PisoWifi/coin_slot.logs 2>&1" >> $file_path
+  echo "" >> $file_path
+  echo "[Install]" >> $file_path
+  echo "WantedBy=multi-user.target" >> $file_path
 fi
+
+sudo chmod 644 $file_path
+
+sudo systemctl daemon-reload
+sudo systemctl enable coin_slot.service
 
 sudo reboot
