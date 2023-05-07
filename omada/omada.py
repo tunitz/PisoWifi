@@ -112,7 +112,7 @@ class Omada:
 				raise
 
 			# Perform the login request manually.
-			response = self.session.post( self.__buildUrl('/login'), json={'username':username,'password':password} )
+			response = self.session.post( self.__buildUrl('/hotspot/login'), json={'name':username,'password':password} )
 			response.raise_for_status()
 
 			# Get the login response.
@@ -139,7 +139,7 @@ class Omada:
 	## Returns the current user information.
 	##
 	def getCurrentUser(self):
-		return self.__get( '/users/current' )
+		return self.__get( '/hotspot/current' )
 	
 	##
 	## Log out of the current session. Return value is always None.
@@ -151,7 +151,7 @@ class Omada:
 		# Only try to log out if we're already logged in.
 		if self.loginResult is not None:
 			# Send the logout request.
-			result = self.__post( '/logout' )
+			result = self.__post( '/hotspot/logout' )
 			# Clear the stored result.
 			self.loginResult = None
 
@@ -161,12 +161,11 @@ class Omada:
 	## Look up a site key given the name.
 	##
 	def __findSiteId(self, name=None):
-
 		# Use the stored site if not provided.
 		if name is None: name = self.site
 
 		# Look for the site in the privilege list.
-		for site in self.currentUser['privilege']['sites']:
+		for site in self.currentUser['sites']:
 			if site['name'] == name:
 				return site['key']
 
@@ -313,19 +312,19 @@ class Omada:
 	## Get All Hotspot Portals
 	##
 	def getAllPortals(self, site=None):
-		return self.__get( f'/hotspot/sites/{self.__findSiteId(site)}/setting/portals' )
+		return self.__get( f'/hotspot/sites/setting/voucher/portals' )
 	
 	##
 	## Get Rate Limit Profiles
 	##
 	def getRateLimitProfiles(self, site=None):
-		return self.__get( f'/sites/{self.__findSiteId(site)}/setting/profiles/rateLimits' )
+		return self.__get( f'/hotspot/sites/{self.__findSiteId(site)}/setting/profiles/rateLimits' )
 	
 	##
 	## Disconnect user
 	##
-	def disconnectClient(self, mac, site=None):
-		return self.__post( f'/sites/{self.__findSiteId(site)}/cmd/clients/{mac}/unauth')
+	def disconnectClient(self, id, site=None):
+		return self.__post( f'/hotspot/sites/{self.__findSiteId(site)}/cmd/clients/{id}/disconnect')
 	
 	##
 	## Create a Voucher
@@ -355,7 +354,7 @@ class Omada:
 	## Returns the list of active clients for given site.
 	##
 	def getAllActiveClients(self, site=None):
-		return self.__geterator( f'/sites/{self.__findSiteId(site)}/clients', params={'filters.active':'true'})
+		return self.__geterator( f'/hotspot/sites/{self.__findSiteId(site)}/clients', params={'filters.active':'true'})
 	
 	##
 	## Get All Authed Clients for the last 5 days (in milliseconds)
