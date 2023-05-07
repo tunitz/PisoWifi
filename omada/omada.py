@@ -75,7 +75,12 @@ class Omada:
 	##
 	def getApiInfo(self):
 		# This uses a different path, so perform request manually.
-		response = self.session.get( self.baseurl + '/api/info' )
+		if self.omadacId is not None:
+			url = self.baseurl + self.omadacId
+		else:
+			url = self.baseurl
+
+		response = self.session.get( url + '/api/info' )
 		response.raise_for_status()
 
 		json = response.json()

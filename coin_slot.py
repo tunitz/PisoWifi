@@ -1,6 +1,6 @@
 from omada import Omada
-import OPi.GPIO as GPIO
 import utilities as Util
+import OPi.GPIO as GPIO
 import traceback
 import json
 import time
@@ -14,7 +14,7 @@ class CoinSlot:
     wait_timeout = 5 # seconds
 
     lcd_timer = 0
-    lcd_timeout = 60
+    lcd_timeout = 120
     lcd_state = False
 
     coin_pin = 11
@@ -31,11 +31,16 @@ class CoinSlot:
         GPIO.add_event_detect(self.coin_pin , GPIO.FALLING, callback=self.input_callback)
         GPIO.add_event_detect(self.button_pin, GPIO.RISING, callback=self.input_callback)
 
+        GPIO.output(self.coin_set_pin, 1) # turn on coin slot
+
         self.voucher_settings = json.load(open('voucher_settings.json'))
         self.omada = Omada()
         self.lcd_timer = time.time()
+        self.new_voucher = None
+        self.voucher_settings['rateLimitId'] = None
 
         lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
+
 
     def __loop__(self):
         try:
@@ -62,7 +67,7 @@ class CoinSlot:
         self.wait_timeout = seconds
     
     def done_waiting(self):
-        isDone = time.time() - self.wait_timer > self.wait_timeout
+        isDone = self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout
 
         if isDone:
             self.wait_timer = 0
@@ -75,6 +80,7 @@ class CoinSlot:
             self.lcd_state = shouldSleep
             if shouldSleep:
                 lcd.display_off()
+                lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
             else:
                 lcd.display_on()
 
@@ -91,13 +97,13 @@ class CoinSlot:
 
         # Coin slot input
         if channel == self.coin_pin:
-            self.self.coin_credit += 1
+            self.coin_credit += 1
             lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
 
         # Button input
         elif channel == self.button_pin:
-            if self.is_processing is False:
-                if self.coin_credit <= 0 and start_timer <= 0:
+            if self.is_processing is False and self.done_waiting():
+                if self.coin_credit <= 0:
                     lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
                 elif self.coin_credit >  0 and self.is_processing == False:
                     self.toggle_processing()
@@ -113,11 +119,9 @@ class CoinSlot:
                         self.wait_for(5)
                     else:
                         lcd.display_message(line1='Voucher failed', line2='Press the button', line3='to try again')
-                        self.wait_for(2)
+                        self.wait_for(3)
                     
                     self.toggle_processing()
-                elif self.done_waiting():
-                    start_timer = 0
 
     def create_voucher(self):
         try:
@@ -126,7 +130,7 @@ class CoinSlot:
             if result is not None:
                 uniqueId = Util.createUniqueId(self.coin_credit, self.voucher_settings['multiplier'])
 
-                if (len(self.voucher_settings['portals']) is 0):
+                if len(self.voucher_settings['portals']) == 0:
                     self.getPortals()
 
                 if self.voucher_settings['rateLimitId'] is None:
@@ -135,7 +139,9 @@ class CoinSlot:
                 self.voucher_settings['note'] = uniqueId
 
                 self.omada.createVoucher(json=self.voucher_settings)
-                self.new_voucher = self.omada.getVoucher(voucherNote = uniqueId)
+                for voucher in self.omada.getVoucher(voucherNote = uniqueId)['data']: # this will return only 1
+                    if voucher['note'] == uniqueId:
+                        self.new_voucher = voucher
 
                 self.omada.logout()
         except Exception:
