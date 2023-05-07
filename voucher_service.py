@@ -14,17 +14,18 @@ class VoucherService:
         # Run infinite
         while True:
             try:
-                self.omada.login() # will try to login if no user is logged in yet
+                result = self.omada.login() # will try to login if no user is logged in yet
 
-                self.getClientsLoginHistory() 
-                self.getAllVouchers()
+                if result is not None:
+                    self.getClientsLoginHistory() 
+                    self.getAllVouchers()
 
-                asyncio.run(self.processVouchers())
-
-                print('Waiting 30 seconds before processing vouchers again')
-                time.sleep(30)
+                    asyncio.run(self.processVouchers())
             except:
                 print(traceback.format_exc())
+
+            print('Waiting 30 seconds before processing vouchers again')
+            time.sleep(30)
 
     def getClientsLoginHistory(self):
         clients = []
@@ -91,7 +92,7 @@ class VoucherService:
         limit = voucher_expired['limit']
 
         if active_client_id is not None:
-            self.omada.disconnectClient(active_client_id)
+            self.omada.disconnectClient(id=active_client_id)
         self.omada.deleteVoucher(voucherId)
         message = f'Voucher: {voucherCode} Limit: {limit} Time Used: {round(time_used, 2)}mins'
         print('Deleted ' +message)

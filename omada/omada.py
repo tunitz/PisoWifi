@@ -92,7 +92,7 @@ class Omada:
 	##
 	## Log in with the provided credentials and return the result.
 	##
-	def login(self):
+	def login(self, path = None):
 
 		# Only try to log in if we're not already logged in.
 		if self.loginResult is None:
@@ -106,13 +106,27 @@ class Omada:
 					raise TypeError('Unable to fetch omadacId.')
 
 			try:
-				username = self.config['omada'].get('username')
-				password = self.config['omada'].get('password')
+				if path is not None:
+					username_key = 'username'
+					password_key = 'password'
+				else:
+					username_key = 'operator_username'
+					password_key = 'operator_password'
+				username = self.config['omada'].get(username_key)
+				password = self.config['omada'].get(password_key)
 			except:
 				raise
 
+			json_request = {'password': password}
+			if path is not None:
+				url_path = path
+				json_request['username'] = username
+			else:
+				url_path = '/hotspot/login'
+				json_request['name'] = username
+
 			# Perform the login request manually.
-			response = self.session.post( self.__buildUrl('/hotspot/login'), json={'name':username,'password':password} )
+			response = self.session.post( self.__buildUrl(url_path), json=json_request)
 			response.raise_for_status()
 
 			# Get the login response.
@@ -131,15 +145,18 @@ class Omada:
 			})
 
 			# Get the current user info.
-			self.currentUser = self.getCurrentUser()
+			self.currentUser = self.getCurrentUser(path=path)
 
 		return self.loginResult
 	
 	##
 	## Returns the current user information.
 	##
-	def getCurrentUser(self):
-		return self.__get( '/hotspot/current' )
+	def getCurrentUser(self, path = None):
+		if path is not None:
+			return self.__get( '/users/current' )
+		else:
+			return self.__get( '/hotspot/current' )
 	
 	##
 	## Log out of the current session. Return value is always None.
@@ -165,9 +182,14 @@ class Omada:
 		if name is None: name = self.site
 
 		# Look for the site in the privilege list.
-		for site in self.currentUser['sites']:
-			if site['name'] == name:
-				return site['key']
+		if 'privilege' in self.currentUser:
+			for site in self.currentUser['privilege']['sites']:
+				if site['name'] == name:
+					return site['key']
+		else:
+			for site in self.currentUser['sites']:
+				if site['name'] == name:
+					return site['key']
 
 		raise PermissionError(f'current user does not have privilege to site "{name}"')
 	
@@ -311,7 +333,7 @@ class Omada:
 	##
 	## Get All Hotspot Portals
 	##
-	def getAllPortals(self, site=None):
+	def getAllPortals(self):
 		return self.__get( f'/hotspot/sites/setting/voucher/portals' )
 	
 	##
@@ -323,8 +345,11 @@ class Omada:
 	##
 	## Disconnect user
 	##
-	def disconnectClient(self, id, site=None):
-		return self.__post( f'/hotspot/sites/{self.__findSiteId(site)}/cmd/clients/{id}/disconnect')
+	def disconnectClient(self, id=None, mac=None, site=None):
+		if id is not None:
+			return self.__post( f'/hotspot/sites/{self.__findSiteId(site)}/cmd/clients/{id}/disconnect')
+		elif mac is not None:
+			return self.__post( f'/sites/{self.__findSiteId(site)}/cmd/clients/{mac}/unauth')
 	
 	##
 	## Create a Voucher
@@ -354,7 +379,7 @@ class Omada:
 	## Returns the list of active clients for given site.
 	##
 	def getAllActiveClients(self, site=None):
-		return self.__geterator( f'/hotspot/sites/{self.__findSiteId(site)}/clients', params={'filters.active':'true'})
+		return self.__geterator( f'/sites/{self.__findSiteId(site)}/clients', params={'filters.active':'true'})
 	
 	##
 	## Get All Authed Clients for the last 5 days (in milliseconds)
