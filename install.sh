@@ -35,9 +35,6 @@ file_path="/lib/systemd/system/coin_slot.service"
 # Set the Python script path
 script_path="/root/PisoWifi/coin_slot.py"
 
-# Set the Python virtual environment path
-venv_path="/root/PisoWifi"
-
 # Check if the file already exists
 if [ -f "$file_path" ]; then
   echo "Service file already exists"
@@ -49,7 +46,7 @@ else
   echo "" >> $file_path
   echo "[Service]" >> $file_path
   echo "Type=idle" >> $file_path
-  echo "ExecStart=/bin/bash -c 'source $venv_path/bin/activate && /usr/bin/python $script_path'" >> $file_path
+  echo "ExecStart=/usr/bin/python3 $script_path" >> $file_path
   echo "" >> $file_path
   echo "[Install]" >> $file_path
   echo "WantedBy=multi-user.target" >> $file_path
