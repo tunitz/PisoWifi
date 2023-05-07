@@ -24,3 +24,17 @@ def createUniqueId(credit, multiplier):
 
 def translateCreditTime(credit_time):
     return f'Time: {int(credit_time / 60)}hr {credit_time % 60}min'
+
+def getCurrentTime():
+    return int(time.time() * 1000)
+
+def calculateTimeDiff(start, end):
+    return (end - start) / 60000
+
+def log_to_file(file_path, text):
+    try:
+        with open(file_path, 'a') as file:
+            file.write('\n' + text)
+    except FileNotFoundError:
+        with open(file_path, 'a+') as file:
+            file.write(text)
