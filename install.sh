@@ -27,13 +27,16 @@ if ! grep -q "^i2c-dev$" /etc/modules; then
   echo "i2c-dev" | sudo tee -a /etc/modules
 fi
 
-# Clone Git repository
-# git clone https://github.com/tunitz/PisoWifi.git
-
 chmod +x coin_slot.py
 
 # Set the file name and path
 file_path="/lib/systemd/system/coin_slot.service"
+
+# Set the Python script path
+script_path="/root/PisoWifi/coin_slot.py"
+
+# Set the Python virtual environment path
+venv_path="/root/PisoWifi"
 
 # Check if the file already exists
 if [ -f "$file_path" ]; then
@@ -41,15 +44,16 @@ if [ -f "$file_path" ]; then
 else
   # Write the file contents
   echo "[Unit]" > $file_path
-  echo "Description=Coin Slot Python" >> $file_path
+  echo "Description=My Coin Slot Service" >> $file_path
   echo "After=multi-user.target" >> $file_path
   echo "" >> $file_path
   echo "[Service]" >> $file_path
   echo "Type=idle" >> $file_path
-  echo "ExecStart=/usr/bin/python3 /root/PisoWifi/coin_slot.py > /root/PisoWifi/coin_slot.logs 2>&1" >> $file_path
+  echo "ExecStart=/bin/bash -c 'source $venv_path/bin/activate && /usr/bin/python $script_path'" >> $file_path
   echo "" >> $file_path
   echo "[Install]" >> $file_path
   echo "WantedBy=multi-user.target" >> $file_path
+
 fi
 
 sudo chmod 644 $file_path
