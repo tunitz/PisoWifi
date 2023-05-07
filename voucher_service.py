@@ -46,7 +46,6 @@ class VoucherService:
         try:
             valid_note = self.validate_note(voucher)
             if valid_note:
-                print('Voucher Code: ' + voucher['code'])
                 time_limit = int(valid_note.group()) # This will get the last group of numbers
                 voucher_expired = self.is_expired(voucher['code'], time_limit)
                 if voucher_expired['expired'] == True:
