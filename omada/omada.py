@@ -92,7 +92,7 @@ class Omada:
 	##
 	## Log in with the provided credentials and return the result.
 	##
-	def login(self, path = None):
+	def login(self, asAdmin = False):
 
 		# Only try to log in if we're not already logged in.
 		if self.loginResult is None:
@@ -106,7 +106,7 @@ class Omada:
 					raise TypeError('Unable to fetch omadacId.')
 
 			try:
-				if path is not None:
+				if asAdmin is not None:
 					username_key = 'username'
 					password_key = 'password'
 				else:
@@ -118,8 +118,8 @@ class Omada:
 				raise
 
 			json_request = {'password': password}
-			if path is not None:
-				url_path = path
+			if asAdmin is True:
+				url_path = '/login'
 				json_request['username'] = username
 			else:
 				url_path = '/hotspot/login'
@@ -145,15 +145,15 @@ class Omada:
 			})
 
 			# Get the current user info.
-			self.currentUser = self.getCurrentUser(path=path)
+			self.currentUser = self.getCurrentUser(asAdmin=asAdmin)
 
 		return self.loginResult
 	
 	##
 	## Returns the current user information.
 	##
-	def getCurrentUser(self, path = None):
-		if path is not None:
+	def getCurrentUser(self, asAdmin = False):
+		if asAdmin is True:
 			return self.__get( '/users/current' )
 		else:
 			return self.__get( '/hotspot/current' )

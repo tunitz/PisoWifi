@@ -13,7 +13,7 @@ class ClientService:
     def __loop__(self):
         while True:
             try:
-                result = self.omada.login(path='/login')
+                result = self.omada.login(asAdmin=True)
 
                 if result is not None:
                     self.getAllActiveClients()
