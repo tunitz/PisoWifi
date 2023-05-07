@@ -66,7 +66,7 @@ class VoucherService:
         return valid_note
     
     def is_expired(self, voucherCode, limit):
-        response = {'active_client_mac': None, 'expired': False, 'time_used': 0, 'voucherCode': voucherCode, 'limit': limit}
+        response = {'active_client_id': None, 'expired': False, 'time_used': 0, 'voucherCode': voucherCode, 'limit': limit}
         time_used = 0 # in seconds
         for client in self.clientsLoginHistory:
             if client['voucherCode'] == voucherCode:
@@ -74,7 +74,7 @@ class VoucherService:
                 end = client['end']
 
                 if client['valid'] == True:
-                    response['active_client_mac'] = client['mac']
+                    response['active_client_id'] = client['id']
                     end = Util.getCurrentTime()
 
                 time_used += Util.calculateTimeDiff(start, end)
@@ -86,12 +86,12 @@ class VoucherService:
     
     def deleteVoucher(self, voucherId, voucher_expired):
         voucherCode = voucher_expired['voucherCode']
-        active_client_mac = voucher_expired['active_client_mac']
+        active_client_id = voucher_expired['active_client_id']
         time_used = voucher_expired['time_used']
         limit = voucher_expired['limit']
 
-        if active_client_mac is not None:
-            self.omada.disconnectClient(active_client_mac)
+        if active_client_id is not None:
+            self.omada.disconnectClient(active_client_id)
         self.omada.deleteVoucher(voucherId)
         message = f'Voucher: {voucherCode} Limit: {limit} Time Used: {round(time_used, 2)}mins'
         print('Deleted ' +message)
