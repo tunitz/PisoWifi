@@ -31,9 +31,10 @@ fi
 # git clone https://github.com/tunitz/PisoWifi.git
 
 chmod +x coin_slot.py
+chmod +x run.sh
 
 # Define the path to the startup script
-startup_script="/root/PisoWifi/coin_slot.py"
+startup_script="/root/PisoWifi/run.sh"
 
 # Check if the startup script is already in the rc.local file
 if grep -q "$startup_script" /etc/rc.local; then
