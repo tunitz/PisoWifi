@@ -22,6 +22,7 @@ class VoucherService:
 
                     asyncio.run(self.processVouchers())
             except:
+                self.omada = Omada() # re-initialize Omada
                 print(traceback.format_exc())
 
             print('Waiting 10 seconds before processing vouchers again')

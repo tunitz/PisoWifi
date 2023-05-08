@@ -122,6 +122,7 @@ class CoinSlot:
             print(traceback.format_exc())
         finally:
             # Clean up the GPIO settings
+            self.omada = Omada() # re-initialize Omada
             GPIO.cleanup()
 
     def getPortals(self):
@@ -140,6 +141,15 @@ class CoinSlot:
     def is_ready(self):
         return (self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout) and (not self.is_processing)
     
+    def start_process(self):
+        self.is_processing = True
+        GPIO.output(self.coin_set_pin, 0) # turn off coin slot
+        display_processing()
+
+    def stop_process(self): 
+        self.is_processing = False
+        GPIO.output(self.coin_set_pin, 1) # turn on coin slot
+
     def lcd_sleep(self):
         if self.sleep_timer > 0:
             sleep = time.time() - self.sleep_timer > self.sleep_timeout
@@ -164,10 +174,7 @@ class CoinSlot:
             if self.coin_credit <= 0:
                 display_menu(self.coin_credit, self.voucher_settings['multiplier'])
             elif self.coin_credit >  0 and self.is_processing == False:
-                self.is_processing = True
-                GPIO.output(self.coin_set_pin, 0) # turn off coin slot
-                display_processing()
-
+                self.start_process()
                 self.create_voucher()
 
                 if self.new_voucher is not None:
@@ -177,10 +184,9 @@ class CoinSlot:
                     self.wait_for(5)
                 else:
                     display_failed()
-                    self.wait_for(2)
-                
-                self.is_processing = False
-                GPIO.output(self.coin_set_pin, 1) # turn on coin slot
+                    self.wait_for(1)
+
+                self.stop_process()
 
     def create_voucher(self):
         try:
@@ -204,6 +210,7 @@ class CoinSlot:
 
                 self.omada.logout()
         except Exception:
+            self.stop_process(self)
             print(traceback.format_exc())
 
 
