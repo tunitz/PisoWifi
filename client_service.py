@@ -22,6 +22,7 @@ class ClientService:
             except Exception:
                 print(traceback.format_exc())
             
+            print('Waiting 5 seconds before processing again')
             time.sleep(5)
 
     def getAllActiveClients(self):
