@@ -54,11 +54,10 @@ def display_voucher(code):
     display_message(line1='Voucher Code:', line2=str(code), line4='Thank you!')
 
 def turn_off_display():
-    global BACKLIGHT_STATE, SCREEN_STATE
+    global BACKLIGHT_STATE
 
     if BACKLIGHT_STATE is not BACKLIGHT_STATES['OFF']:
-        lcd.clear()
-        SCREEN_STATE = SCREEN_STATES['CLEAR']
+        should_clear_screen(SCREEN_STATES['CLEAR'])
         BACKLIGHT_STATE = BACKLIGHT_STATES['OFF']
         lcd.set_backlight(BACKLIGHT_STATE)
 
