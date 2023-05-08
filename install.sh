@@ -11,6 +11,7 @@ sudo apt-get install python3-pip python-smbus python3-dev i2c-tools
 pip3 install requests
 pip3 install OPi.GPIO
 pip3 install ping3
+pip3 install i2clcd
 
 # Check if overlays already exist in armbianEnv.txt
 if grep -q "overlays=" /boot/armbianEnv.txt; then
