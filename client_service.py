@@ -19,12 +19,43 @@ class ClientService:
                     self.getAllActiveClients()
 
                     asyncio.run(self.processClients())
+
+                    self.getClientsLoginHistory()
+                    asyncio.run(self.processDoubleCheck())
+                    
             except Exception:
                 print(traceback.format_exc())
             
             print('Waiting 30 seconds before processing clients again')
             time.sleep(30)
-    
+
+    def getClientsLoginHistory(self):
+        self.getAllActiveClients() # refresh active clients
+        clientsLoginHistory = []
+        for client in self.omada.getAllAuthedClients():
+            if client['valid'] == True:
+                clientsLoginHistory.append(client)
+        self.clientsLoginHistory = clientsLoginHistory
+
+    async def processDoubleCheck(self):
+        tasks = [asyncio.create_task(self.double_check_task(client)) for client in self.clientsLoginHistory]
+        await asyncio.gather(*tasks)
+
+    async def double_check_task(self, client):
+        try:
+            not_found = True
+            mac = client['mac']
+            for active_client in self.active_clients:
+                if active_client['mac'] == client['mac']:
+                    not_found = False
+
+            if not_found:
+                print(f'{mac} not Found! Disconnecting user')
+                self.omada.disconnectClient(mac=mac)
+
+        except Exception:
+            print(traceback.format_exc())
+
     def getAllActiveClients(self):
         active_clients = []
         for client in self.omada.getAllActiveClients():
