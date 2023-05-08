@@ -10,53 +10,64 @@ I2C_BUS = 0
 I2C_ADD = 0x27
 LCD_WIDTH = 20
 
-SCREEN_MESSAGE_STATE = 0
-CLEAR = 0
-MENU = 1
-PROCESSING = 2
-VOUCHER = 3
-FAILED = 4
+BACKLIGHT_STATES = {
+    'OFF'   : 0,
+    'ON'    : 1,
+}
+BACKLIGHT_STATE = 1
 
+SCREEN_STATES = {
+    'STARTUP'   : 0,
+    'CLEAR'     : 1,
+    'MENU'      : 2,
+    'PROCESSING': 3,
+    'VOUCHER'   : 4,
+    'FAILED'    : 5,
+}
 SCREEN_STATE = 0
-OFF = 0
-ON = 1
 
 def lcd_init():
     global lcd
     lcd = i2clcd.i2clcd(i2c_bus=I2C_BUS, i2c_addr=I2C_ADD, lcd_width=LCD_WIDTH)
     lcd.init()
 
-def display_menu(coin_credit, multiplier):
-    global SCREEN_MESSAGE_STATE
-    if SCREEN_MESSAGE_STATE is not MENU:
+def should_clear_screen(STATE):
+    global SCREEN_STATE
+    if SCREEN_STATE is not STATE and BACKLIGHT_STATE is BACKLIGHT_STATES['ON']:
         lcd.clear()
-        SCREEN_MESSAGE_STATE = MENU
+        SCREEN_STATE = STATE
 
+def display_menu(coin_credit, multiplier):
+    should_clear_screen(SCREEN_STATES['MENU'])
     display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {coin_credit}', line4=Util.translateCreditTime(coin_credit * multiplier))
 
 def display_processing():
-    global SCREEN_MESSAGE_STATE
-    if SCREEN_MESSAGE_STATE is not PROCESSING:
-        lcd.clear()
-        SCREEN_MESSAGE_STATE = PROCESSING
-
+    should_clear_screen(SCREEN_STATES['PROCESSING'])
     display_message(line1='Creating voucher.', line2='Please wait.')
 
 def display_failed():
-    global SCREEN_MESSAGE_STATE
-    if SCREEN_MESSAGE_STATE is not FAILED:
-        lcd.clear()
-        SCREEN_MESSAGE_STATE = FAILED
-
+    should_clear_screen(SCREEN_STATES['FAILED'])
     display_message(line1='Voucher failed', line2='Press the button', line3='to try again')
 
 def display_voucher(code):
-    global SCREEN_MESSAGE_STATE
-    if SCREEN_MESSAGE_STATE is not FAILED:
-        lcd.clear()
-        SCREEN_MESSAGE_STATE = FAILED
-
+    should_clear_screen(SCREEN_STATES['VOUCHER'])
     display_message(line1='Voucher Code:', line2=str(code), line4='Thank you!')
+
+def turn_off_display():
+    global BACKLIGHT_STATE, SCREEN_STATE
+
+    if BACKLIGHT_STATE is not BACKLIGHT_STATES['OFF']:
+        lcd.clear()
+        SCREEN_STATE = SCREEN_STATES['CLEAR']
+        BACKLIGHT_STATE = BACKLIGHT_STATES['OFF']
+        lcd.set_backlight(BACKLIGHT_STATE)
+
+def turn_on_display():
+    global BACKLIGHT_STATE
+
+    if BACKLIGHT_STATE is not BACKLIGHT_STATES['ON']:
+        BACKLIGHT_STATE = BACKLIGHT_STATES['ON']
+        lcd.set_backlight(BACKLIGHT_STATE)
 
 def display_message(line1=None, line2=None, line3=None, line4=None):
     if line1 is not None:
@@ -68,17 +79,6 @@ def display_message(line1=None, line2=None, line3=None, line4=None):
     if line4 is not None:
         lcd.print_line(line4, line=3)
 
-def turn_off_display():
-    global SCREEN_STATE, SCREEN_MESSAGE_STATE
-    lcd.clear()
-    SCREEN_STATE = OFF
-    lcd.set_backlight(OFF)
-
-def turn_on_display():
-    global SCREEN_STATE
-    SCREEN_STATE = ON
-    lcd.set_backlight(ON)
-
 class CoinSlot:
     coin_credit = 0
     is_processing = False
@@ -87,8 +87,7 @@ class CoinSlot:
     wait_timeout = 5 # seconds
 
     sleep_timer = 0
-    sleep_timeout = 5
-    lcd_state = False
+    sleep_timeout = 120
 
     coin_pin = 11
     coin_set_pin = 13
@@ -137,30 +136,24 @@ class CoinSlot:
     def wait_for(self, seconds):
         self.wait_timer = time.time()
         self.wait_timeout = seconds
-    
-    def done_waiting(self):
-        isDone = self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout
 
-        if isDone:
-            self.wait_timer = 0
-        
-        return isDone
+    def is_ready(self):
+        ready = (self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout) and (not self.is_processing)
+        if ready:
+            GPIO.output(self.coin_set_pin, 1) # turn on coin slot
+        else:
+            GPIO.output(self.coin_set_pin, 0) # turn of coin slot
+
+        return ready
     
     def lcd_sleep(self):
-        shouldSleep = time.time() - self.sleep_timer > self.sleep_timeout
         if self.sleep_timer > 0:
-            if SCREEN_STATE is ON and shouldSleep:
+            sleep = time.time() - self.sleep_timer > self.sleep_timeout
+            if BACKLIGHT_STATE is BACKLIGHT_STATES['ON'] and sleep:
                 self.sleep_timer = 0
                 turn_off_display()
-            elif SCREEN_STATE is OFF:
+            elif BACKLIGHT_STATE is BACKLIGHT_STATES['OFF']:
                 turn_on_display()
-
-    def toggle_processing(self):
-        self.is_processing = not self.is_processing
-        if self.is_processing:
-            GPIO.output(self.coin_set_pin, 0) # turn off coin slot
-        else:
-            GPIO.output(self.coin_set_pin, 1) # turn on coin slot
 
     def input_callback(self, channel):
         global IN_MENU
@@ -175,14 +168,11 @@ class CoinSlot:
 
         # Button input
         elif channel == self.button_pin:
-            if SCREEN_STATE is OFF:
-                display_menu(self.coin_credit, self.voucher_settings['multiplier'])
-
-            elif self.is_processing is False and self.done_waiting():
+            if self.is_ready():
                 if self.coin_credit <= 0:
                     display_menu(self.coin_credit, self.voucher_settings['multiplier'])
                 elif self.coin_credit >  0 and self.is_processing == False:
-                    self.toggle_processing()
+                    self.is_processing = True
                     display_processing()
                     self.create_voucher()
 
@@ -193,9 +183,9 @@ class CoinSlot:
                         self.wait_for(5)
                     else:
                         display_failed()
-                        self.wait_for(3)
+                        self.wait_for(2)
                     
-                    self.toggle_processing()
+                    self.is_processing = False
 
     def create_voucher(self):
         try:
