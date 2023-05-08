@@ -106,7 +106,7 @@ class Omada:
 					raise TypeError('Unable to fetch omadacId.')
 
 			try:
-				if asAdmin is not None:
+				if asAdmin is True:
 					username_key = 'username'
 					password_key = 'password'
 				else:
