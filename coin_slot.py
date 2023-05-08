@@ -155,7 +155,7 @@ class CoinSlot:
 
         # Coin slot input
         if channel == self.coin_pin:
-            self.wait_for(1.5)
+            self.wait_for(1)
             self.coin_credit += 1
             display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
