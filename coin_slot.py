@@ -2,9 +2,82 @@ from omada import Omada
 import utilities as Util
 import OPi.GPIO as GPIO
 import traceback
+import i2clcd
 import json
 import time
-import lcd
+
+I2C_BUS = 0
+I2C_ADD = 0x27
+LCD_WIDTH = 20
+
+BACKLIGHT_STATES = {
+    'OFF'   : 0,
+    'ON'    : 1,
+}
+BACKLIGHT_STATE = 1
+
+SCREEN_STATES = {
+    'STARTUP'   : 0,
+    'CLEAR'     : 1,
+    'MENU'      : 2,
+    'PROCESSING': 3,
+    'VOUCHER'   : 4,
+    'FAILED'    : 5,
+}
+SCREEN_STATE = 0
+
+def lcd_init():
+    global lcd
+    lcd = i2clcd.i2clcd(i2c_bus=I2C_BUS, i2c_addr=I2C_ADD, lcd_width=LCD_WIDTH)
+    lcd.init()
+
+def should_clear_screen(STATE):
+    global SCREEN_STATE
+    if SCREEN_STATE is not STATE and BACKLIGHT_STATE is BACKLIGHT_STATES['ON']:
+        lcd.clear()
+        SCREEN_STATE = STATE
+
+def display_menu(coin_credit, multiplier):
+    should_clear_screen(SCREEN_STATES['MENU'])
+    display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {coin_credit}', line4=Util.translateCreditTime(coin_credit * multiplier))
+
+def display_processing():
+    should_clear_screen(SCREEN_STATES['PROCESSING'])
+    display_message(line1='Creating voucher.', line2='Please wait.')
+
+def display_failed():
+    should_clear_screen(SCREEN_STATES['FAILED'])
+    display_message(line1='Voucher failed', line2='Press the button', line3='to try again')
+
+def display_voucher(code):
+    should_clear_screen(SCREEN_STATES['VOUCHER'])
+    display_message(line1='Voucher Code:', line2=str(code), line4='Thank you!')
+
+def turn_off_display():
+    global BACKLIGHT_STATE, SCREEN_STATE
+
+    if BACKLIGHT_STATE is not BACKLIGHT_STATES['OFF']:
+        lcd.clear()
+        SCREEN_STATE = SCREEN_STATES['CLEAR']
+        BACKLIGHT_STATE = BACKLIGHT_STATES['OFF']
+        lcd.set_backlight(BACKLIGHT_STATE)
+
+def turn_on_display():
+    global BACKLIGHT_STATE
+
+    if BACKLIGHT_STATE is not BACKLIGHT_STATES['ON']:
+        BACKLIGHT_STATE = BACKLIGHT_STATES['ON']
+        lcd.set_backlight(BACKLIGHT_STATE)
+
+def display_message(line1=None, line2=None, line3=None, line4=None):
+    if line1 is not None:
+        lcd.print_line(line1, line=0)
+    if line2 is not None:
+        lcd.print_line(line2, line=1)
+    if line3 is not None:
+        lcd.print_line(line3, line=2)
+    if line4 is not None:
+        lcd.print_line(line4, line=3)
 
 class CoinSlot:
     coin_credit = 0
@@ -13,9 +86,8 @@ class CoinSlot:
     wait_timer = 0
     wait_timeout = 5 # seconds
 
-    lcd_timer = 0
-    lcd_timeout = 120
-    lcd_state = False
+    sleep_timer = 0
+    sleep_timeout = 120
 
     coin_pin = 11
     coin_set_pin = 13
@@ -35,18 +107,17 @@ class CoinSlot:
 
         self.voucher_settings = json.load(open('voucher_settings.json'))
         self.omada = Omada()
-        self.lcd_timer = time.time()
+        self.sleep_timer = time.time()
         self.new_voucher = None
         self.voucher_settings['rateLimitId'] = None
 
-        lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
-
+        display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
     def __loop__(self):
         try:
             while True:
                 self.lcd_sleep()
-                time.sleep(1)
+                time.sleep(0.01)
         except Exception:
             print(traceback.format_exc())
         finally:
@@ -65,63 +136,56 @@ class CoinSlot:
     def wait_for(self, seconds):
         self.wait_timer = time.time()
         self.wait_timeout = seconds
-    
-    def done_waiting(self):
-        isDone = self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout
 
-        if isDone:
-            self.wait_timer = 0
-        
-        return isDone
+    def is_ready(self):
+        ready = (self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout) and (not self.is_processing)
+        if ready:
+            GPIO.output(self.coin_set_pin, 1) # turn on coin slot
+        else:
+            GPIO.output(self.coin_set_pin, 0) # turn of coin slot
+
+        return ready
     
     def lcd_sleep(self):
-        shouldSleep = time.time() - self.lcd_timer > self.lcd_timeout
-        if self.lcd_state is not shouldSleep:
-            self.lcd_state = shouldSleep
-            if shouldSleep:
-                lcd.display_off()
-                lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
-            else:
-                lcd.display_on()
-
-    def toggle_processing(self):
-        self.is_processing = not self.is_processing
-        if self.is_processing:
-            GPIO.output(self.coin_set_pin, 0) # turn off coin slot
-        else:
-            GPIO.output(self.coin_set_pin, 1) # turn on coin slot
+        if self.sleep_timer > 0:
+            sleep = time.time() - self.sleep_timer > self.sleep_timeout
+            if BACKLIGHT_STATE is BACKLIGHT_STATES['ON'] and sleep:
+                self.sleep_timer = 0
+                turn_off_display()
+            elif BACKLIGHT_STATE is BACKLIGHT_STATES['OFF']:
+                turn_on_display()
 
     def input_callback(self, channel):
+        global IN_MENU
+
         # Reset display sleep timer
-        self.lcd_timer = time.time()
+        self.sleep_timer = time.time()
 
         # Coin slot input
         if channel == self.coin_pin:
             self.coin_credit += 1
-            lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
+            display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
         # Button input
         elif channel == self.button_pin:
-            if self.is_processing is False and self.done_waiting():
+            if self.is_ready():
                 if self.coin_credit <= 0:
-                    lcd.display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {self.coin_credit}', line4=Util.translateCreditTime(self.coin_credit * self.voucher_settings['multiplier']))
+                    display_menu(self.coin_credit, self.voucher_settings['multiplier'])
                 elif self.coin_credit >  0 and self.is_processing == False:
-                    self.toggle_processing()
-
-                    lcd.display_message(line1='Creating voucher.', line2='Please wait.')
-
+                    self.is_processing = True
+                    display_processing()
                     self.create_voucher()
 
                     if self.new_voucher is not None:
                         self.coin_credit = 0
-                        lcd.display_message(line1='Voucher Code:', line2=str(self.new_voucher['code']), line4='Thank you!')
+                        display_voucher(self.new_voucher['code'])
                         self.new_voucher = None
                         self.wait_for(5)
                     else:
-                        lcd.display_message(line1='Voucher failed', line2='Press the button', line3='to try again')
-                        self.wait_for(3)
+                        display_failed()
+                        self.wait_for(2)
                     
-                    self.toggle_processing()
+                    self.is_processing = False
 
     def create_voucher(self):
         try:
@@ -147,8 +211,10 @@ class CoinSlot:
         except Exception:
             print(traceback.format_exc())
 
-lcd.init()
-lcd.display_message(line1='MottPott Piso WiFi', line3='Please wait!', line4='System is starting')
+
+
+lcd_init()
+display_message(line1='MottPott Piso WiFi', line3='Please wait!', line4='System is starting')
 
 Util.checkOmada()
 
