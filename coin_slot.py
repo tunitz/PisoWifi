@@ -138,13 +138,7 @@ class CoinSlot:
         self.wait_timeout = seconds
 
     def is_ready(self):
-        ready = (self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout) and (not self.is_processing)
-        if ready:
-            GPIO.output(self.coin_set_pin, 1) # turn on coin slot
-        else:
-            GPIO.output(self.coin_set_pin, 0) # turn of coin slot
-
-        return ready
+        return (self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout) and (not self.is_processing)
     
     def lcd_sleep(self):
         if self.sleep_timer > 0:
@@ -156,36 +150,37 @@ class CoinSlot:
                 turn_on_display()
 
     def input_callback(self, channel):
-        global IN_MENU
-
         # Reset display sleep timer
         self.sleep_timer = time.time()
 
         # Coin slot input
         if channel == self.coin_pin:
+            self.wait_for(1.5)
             self.coin_credit += 1
             display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
         # Button input
-        elif channel == self.button_pin:
-            if self.is_ready():
-                if self.coin_credit <= 0:
-                    display_menu(self.coin_credit, self.voucher_settings['multiplier'])
-                elif self.coin_credit >  0 and self.is_processing == False:
-                    self.is_processing = True
-                    display_processing()
-                    self.create_voucher()
+        elif channel == self.button_pin and self.is_ready():
+            if self.coin_credit <= 0:
+                display_menu(self.coin_credit, self.voucher_settings['multiplier'])
+            elif self.coin_credit >  0 and self.is_processing == False:
+                self.is_processing = True
+                GPIO.output(self.coin_set_pin, 0) # turn off coin slot
+                display_processing()
 
-                    if self.new_voucher is not None:
-                        self.coin_credit = 0
-                        display_voucher(self.new_voucher['code'])
-                        self.new_voucher = None
-                        self.wait_for(5)
-                    else:
-                        display_failed()
-                        self.wait_for(2)
-                    
-                    self.is_processing = False
+                self.create_voucher()
+
+                if self.new_voucher is not None:
+                    self.coin_credit = 0
+                    display_voucher(self.new_voucher['code'])
+                    self.new_voucher = None
+                    self.wait_for(5)
+                else:
+                    display_failed()
+                    self.wait_for(2)
+                
+                self.is_processing = False
+                GPIO.output(self.coin_set_pin, 1) # turn on coin slot
 
     def create_voucher(self):
         try:
