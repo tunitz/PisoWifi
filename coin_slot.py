@@ -13,6 +13,9 @@ LCD_WIDTH = 20
 SCREEN_MESSAGE_STATE = 0
 CLEAR = 0
 MENU = 1
+PROCESSING = 2
+VOUCHER = 3
+FAILED = 4
 
 SCREEN_STATE = 0
 OFF = 0
@@ -26,10 +29,34 @@ def lcd_init():
 def display_menu(coin_credit, multiplier):
     global SCREEN_MESSAGE_STATE
     if SCREEN_MESSAGE_STATE is not MENU:
-        clear_screen()
+        lcd.clear()
         SCREEN_MESSAGE_STATE = MENU
 
     display_message(line1='MottPott Piso WiFi', line3=f'Insert Coin: {coin_credit}', line4=Util.translateCreditTime(coin_credit * multiplier))
+
+def display_processing():
+    global SCREEN_MESSAGE_STATE
+    if SCREEN_MESSAGE_STATE is not PROCESSING:
+        lcd.clear()
+        SCREEN_MESSAGE_STATE = PROCESSING
+
+    display_message(line1='Creating voucher.', line2='Please wait.')
+
+def display_failed():
+    global SCREEN_MESSAGE_STATE
+    if SCREEN_MESSAGE_STATE is not FAILED:
+        lcd.clear()
+        SCREEN_MESSAGE_STATE = FAILED
+
+    display_message(line1='Voucher failed', line2='Press the button', line3='to try again')
+
+def display_voucher(code):
+    global SCREEN_MESSAGE_STATE
+    if SCREEN_MESSAGE_STATE is not FAILED:
+        lcd.clear()
+        SCREEN_MESSAGE_STATE = FAILED
+
+    display_message(line1='Voucher Code:', line2=str(code), line4='Thank you!')
 
 def display_message(line1=None, line2=None, line3=None, line4=None):
     if line1 is not None:
@@ -41,15 +68,9 @@ def display_message(line1=None, line2=None, line3=None, line4=None):
     if line4 is not None:
         lcd.print_line(line4, line=3)
 
-def clear_screen():
-    global SCREEN_MESSAGE_STATE
-    if SCREEN_MESSAGE_STATE is not CLEAR:
-        SCREEN_MESSAGE_STATE = CLEAR
-        lcd.clear()
-
 def turn_off_display():
     global SCREEN_STATE, SCREEN_MESSAGE_STATE
-    clear_screen()
+    lcd.clear()
     SCREEN_STATE = OFF
     lcd.set_backlight(OFF)
 
@@ -133,7 +154,6 @@ class CoinSlot:
                 turn_off_display()
             elif SCREEN_STATE is OFF:
                 turn_on_display()
-                display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
     def toggle_processing(self):
         self.is_processing = not self.is_processing
@@ -155,27 +175,24 @@ class CoinSlot:
 
         # Button input
         elif channel == self.button_pin:
-            if self.is_processing is False and self.done_waiting():
+            if SCREEN_STATE is OFF:
+                display_menu(self.coin_credit, self.voucher_settings['multiplier'])
+
+            elif self.is_processing is False and self.done_waiting():
                 if self.coin_credit <= 0:
                     display_menu(self.coin_credit, self.voucher_settings['multiplier'])
                 elif self.coin_credit >  0 and self.is_processing == False:
                     self.toggle_processing()
-                    clear_screen()
-                    display_message(line1='Creating voucher.', line2='Please wait.')
-                    IN_MENU = 0
+                    display_processing()
                     self.create_voucher()
 
                     if self.new_voucher is not None:
                         self.coin_credit = 0
-                        clear_screen()
-                        display_message(line1='Voucher Code:', line2=str(self.new_voucher['code']), line4='Thank you!')
-                        IN_MENU = 0
+                        display_voucher(self.new_voucher['code'])
                         self.new_voucher = None
                         self.wait_for(5)
                     else:
-                        clear_screen()
-                        display_message(line1='Voucher failed', line2='Press the button', line3='to try again')
-                        IN_MENU = 0
+                        display_failed()
                         self.wait_for(3)
                     
                     self.toggle_processing()
