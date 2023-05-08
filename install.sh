@@ -35,6 +35,9 @@ file_path="/lib/systemd/system/coin_slot.service"
 # Set the Python script path
 script_path="/root/PisoWifi/coin_slot.py"
 
+# Set the Python script parent path
+script_parent_path="/root/PisoWifi"
+
 # Check if the file already exists
 if [ -f "$file_path" ]; then
   echo "Service file already exists"
@@ -45,7 +48,10 @@ else
   echo "After=multi-user.target" >> $file_path
   echo "" >> $file_path
   echo "[Service]" >> $file_path
-  echo "Type=idle" >> $file_path
+  echo "Type=simple" >> $file_path
+  echo "WorkingDirectory=$script_parent_path" >> $file_path
+  echo "Environment=PYTHONOATH=$script_parent_path" >> $file_path
+  echo "Restart=always" >> $file_path
   echo "ExecStart=/usr/bin/python3 $script_path" >> $file_path
   echo "" >> $file_path
   echo "[Install]" >> $file_path
