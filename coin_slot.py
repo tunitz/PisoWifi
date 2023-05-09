@@ -116,7 +116,7 @@ class CoinSlot:
         try:
             while True:
                 self.lcd_sleep()
-                time.sleep(0.01)
+                time.sleep(0.001)
         except Exception:
             print(traceback.format_exc())
         finally:
