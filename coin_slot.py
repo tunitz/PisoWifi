@@ -149,6 +149,7 @@ class CoinSlot:
         display_processing()
 
     def stop_process(self): 
+        self.new_voucher = None # reset new_voucher every start processing
         self.is_processing = False
         GPIO.output(self.coin_set_pin, 1) # turn on coin slot
 
