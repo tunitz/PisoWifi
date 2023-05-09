@@ -121,6 +121,8 @@ class CoinSlot:
             print(traceback.format_exc())
         finally:
             # Clean up the GPIO settings
+            display_failed()
+            self.wait_for(1)
             self.omada = Omada() # re-initialize Omada
             GPIO.cleanup()
 
@@ -141,6 +143,7 @@ class CoinSlot:
         return (self.wait_timer == 0 or time.time() - self.wait_timer > self.wait_timeout) and (not self.is_processing)
     
     def start_process(self):
+        self.new_voucher = None # reset new_voucher every start processing
         self.is_processing = True
         GPIO.output(self.coin_set_pin, 0) # turn off coin slot
         display_processing()
@@ -159,33 +162,39 @@ class CoinSlot:
                 turn_on_display()
 
     def input_callback(self, channel):
-        # Reset display sleep timer
-        self.sleep_timer = time.time()
+        try:
+            # Reset display sleep timer
+            self.sleep_timer = time.time()
 
-        # Coin slot input
-        if channel == self.coin_pin:
-            self.wait_for(1)
-            self.coin_credit += 1
-            display_menu(self.coin_credit, self.voucher_settings['multiplier'])
-
-        # Button input
-        elif channel == self.button_pin and self.is_ready():
-            if self.coin_credit <= 0:
+            # Coin slot input
+            if channel == self.coin_pin:
+                self.wait_for(1)
+                self.coin_credit += 1
                 display_menu(self.coin_credit, self.voucher_settings['multiplier'])
-            elif self.coin_credit >  0 and self.is_processing == False:
-                self.start_process()
-                self.create_voucher()
 
-                if self.new_voucher is not None:
-                    self.coin_credit = 0
-                    display_voucher(self.new_voucher['code'])
-                    self.new_voucher = None
-                    self.wait_for(5)
-                else:
-                    display_failed()
-                    self.wait_for(1)
+            # Button input
+            elif channel == self.button_pin and self.is_ready():
+                if self.coin_credit <= 0:
+                    display_menu(self.coin_credit, self.voucher_settings['multiplier'])
+                elif self.coin_credit >  0 and self.is_processing == False:
+                    self.start_process()
+                    self.create_voucher()
 
-                self.stop_process()
+                    if self.new_voucher is not None:
+                        self.coin_credit = 0
+                        display_voucher(self.new_voucher['code'])
+                        self.wait_for(5)
+                    else:
+                        display_failed()
+                        self.wait_for(1)
+
+                    self.stop_process()
+        except Exception:
+            self.omada = Omada() # re-initialize Omada
+            self.stop_process()
+            display_failed()
+            self.wait_for(1)
+            print(traceback.format_exc())
 
     def create_voucher(self):
         try:
@@ -209,7 +218,10 @@ class CoinSlot:
 
                 self.omada.logout()
         except Exception:
-            self.stop_process(self)
+            self.omada = Omada() # re-initialize Omada
+            self.stop_process()
+            display_failed()
+            self.wait_for(1)
             print(traceback.format_exc())
 
 
