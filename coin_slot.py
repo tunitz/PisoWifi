@@ -183,7 +183,7 @@ class CoinSlot:
                     if self.new_voucher is not None:
                         self.coin_credit = 0
                         display_voucher(self.new_voucher['code'])
-                        self.wait_for(5)
+                        self.wait_for(3)
                     else:
                         display_failed()
                         self.wait_for(1)
