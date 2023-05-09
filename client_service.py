@@ -20,6 +20,7 @@ class ClientService:
                     self.getAllActiveClients()
                     asyncio.run(self.processClients())
             except Exception:
+                self.omada = Omada() # re-initialize Omada
                 print(traceback.format_exc())
             
             print('Waiting 5 seconds before processing again')

@@ -22,10 +22,11 @@ class VoucherService:
 
                     asyncio.run(self.processVouchers())
             except:
+                self.omada = Omada() # re-initialize Omada
                 print(traceback.format_exc())
 
-            print('Waiting 30 seconds before processing vouchers again')
-            time.sleep(30)
+            print('Waiting 10 seconds before processing vouchers again')
+            time.sleep(10)
 
     def getClientsLoginHistory(self):
         clients = []
@@ -44,16 +45,12 @@ class VoucherService:
         await asyncio.gather(*tasks)
 
     async def voucher_task(self, voucher):
-        try:
-            valid_note = self.validate_note(voucher)
-            if valid_note:
-                time_limit = int(valid_note.group()) # This will get the last group of numbers
-                voucher_expired = self.is_expired(voucher['code'], time_limit)
-                if voucher_expired['expired'] == True:
-                    self.deleteVoucher(voucher['id'], voucher_expired)
-
-        except Exception:
-            print(traceback.format_exc())
+        valid_note = self.validate_note(voucher)
+        if valid_note:
+            time_limit = int(valid_note.group()) # This will get the last group of numbers
+            voucher_expired = self.is_expired(voucher['code'], time_limit)
+            if voucher_expired['expired'] == True:
+                self.deleteVoucher(voucher['id'], voucher_expired)
 
     def validate_note(self, voucher):
         # Regex expression
