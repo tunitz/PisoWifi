@@ -180,9 +180,9 @@ class CoinSlot:
                     self.start_process()
                     self.create_voucher()
 
-                    if self.new_voucher is not None:
-                        self.coin_credit = 0
+                    if self.new_voucher is not None and 'code' in self.new_voucher:
                         display_voucher(self.new_voucher['code'])
+                        self.coin_credit = 0
                         self.wait_for(3)
                     else:
                         display_failed()
