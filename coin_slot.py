@@ -105,7 +105,6 @@ class CoinSlot:
         GPIO.output(self.coin_set_pin, 1) # turn on coin slot
 
         self.voucher_settings = json.load(open('voucher_settings.json'))
-        self.omada = Omada()
         self.sleep_timer = time.time()
         self.new_voucher = None
         self.voucher_settings['rateLimitId'] = None
@@ -158,6 +157,8 @@ class CoinSlot:
             sleep = time.time() - self.sleep_timer > self.sleep_timeout
             if BACKLIGHT_STATE is BACKLIGHT_STATES['ON'] and sleep:
                 self.sleep_timer = 0
+                self.omada = None
+                self.stop_process()
                 turn_off_display()
             elif BACKLIGHT_STATE is BACKLIGHT_STATES['OFF']:
                 turn_on_display()
@@ -191,7 +192,6 @@ class CoinSlot:
 
                     self.stop_process()
         except Exception:
-            self.omada = Omada() # re-initialize Omada
             self.stop_process()
             display_failed()
             self.wait_for(1)
@@ -199,6 +199,9 @@ class CoinSlot:
 
     def create_voucher(self):
         try:
+            if self.omada is None:
+                self.omada = Omada() # re-initialize Omada
+                
             result = self.omada.login()
 
             if result is not None:
@@ -219,7 +222,6 @@ class CoinSlot:
 
                 self.omada.logout()
         except Exception:
-            self.omada = Omada() # re-initialize Omada
             self.stop_process()
             display_failed()
             self.wait_for(1)
