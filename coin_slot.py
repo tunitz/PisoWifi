@@ -92,6 +92,8 @@ class CoinSlot:
     coin_set_pin = 13
     button_pin = 15
 
+    debounce_counter = 0
+
     def __init__(self):
         # Setup the GPIO mode and input pin
         GPIO.setmode(GPIO.BOARD)
@@ -108,6 +110,7 @@ class CoinSlot:
         self.sleep_timer = time.time()
         self.new_voucher = None
         self.voucher_settings['rateLimitId'] = None
+        self.debounce_counter = Util.getCurrentTime()
 
         display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
@@ -163,16 +166,21 @@ class CoinSlot:
             elif BACKLIGHT_STATE is BACKLIGHT_STATES['OFF']:
                 turn_on_display()
 
+    def debounce(self):
+        time = Util.getCurrentTime() - self.debounce_counter
+        return time > 40
+
     def input_callback(self, channel):
         try:
             # Reset display sleep timer
             self.sleep_timer = time.time()
 
             # Coin slot input
-            if channel == self.coin_pin:
+            if channel == self.coin_pin and self.debounce():
                 self.wait_for(1)
                 self.coin_credit += 1
                 display_menu(self.coin_credit, self.voucher_settings['multiplier'])
+                self.debounce_counter = Util.getCurrentTime()
 
             # Button input
             elif channel == self.button_pin and self.is_ready():
