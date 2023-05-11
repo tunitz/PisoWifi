@@ -199,7 +199,7 @@ class CoinSlot:
 
     def create_voucher(self):
         try:
-            if self.omada is None:
+            if not hasattr(self,'omada') or self.omada is None:
                 self.omada = Omada() # re-initialize Omada
                 
             result = self.omada.login()
