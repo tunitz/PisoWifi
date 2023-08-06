@@ -11,6 +11,6 @@
     "amount": 1,
     "durationType": 1,
     "portals": [],
-    "multiplier": 24,
+    "multiplier": 30,
     "rateLimitName": "Customer Limit"
 }

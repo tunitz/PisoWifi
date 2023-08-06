@@ -158,13 +158,19 @@ class CoinSlot:
     def lcd_sleep(self):
         if self.sleep_timer > 0:
             sleep = time.time() - self.sleep_timer > self.sleep_timeout
-            if BACKLIGHT_STATE is BACKLIGHT_STATES['ON'] and sleep:
+            # if BACKLIGHT_STATE is BACKLIGHT_STATES['ON'] and sleep:
+            #     self.sleep_timer = 0
+            #     self.omada = None
+            #     self.stop_process()
+            #     turn_off_display()
+            # elif BACKLIGHT_STATE is BACKLIGHT_STATES['OFF']:
+            #     turn_on_display()
+
+            if sleep:
                 self.sleep_timer = 0
                 self.omada = None
                 self.stop_process()
-                turn_off_display()
-            elif BACKLIGHT_STATE is BACKLIGHT_STATES['OFF']:
-                turn_on_display()
+                display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
     def debounce(self):
         time = Util.getCurrentTime() - self.debounce_counter
