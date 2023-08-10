@@ -10,6 +10,8 @@ I2C_BUS = 0
 I2C_ADD = 0x27
 LCD_WIDTH = 20
 
+FIVE_DAYS_SECONDS = 5 * 24 * 60 * 60
+
 BACKLIGHT_STATES = {
     'OFF'   : 0,
     'ON'    : 1,
@@ -92,6 +94,8 @@ class CoinSlot:
     coin_set_pin = 13
     button_pin = 15
 
+    debounce_counter = 0
+
     def __init__(self):
         # Setup the GPIO mode and input pin
         GPIO.setmode(GPIO.BOARD)
@@ -107,7 +111,7 @@ class CoinSlot:
         self.voucher_settings = json.load(open('voucher_settings.json'))
         self.sleep_timer = time.time()
         self.new_voucher = None
-        self.voucher_settings['rateLimitId'] = None
+        self.debounce_counter = Util.getCurrentTime()
 
         display_menu(self.coin_credit, self.voucher_settings['multiplier'])
 
@@ -124,15 +128,6 @@ class CoinSlot:
             self.wait_for(1)
             self.omada = Omada() # re-initialize Omada
             GPIO.cleanup()
-
-    def getPortals(self):
-        for portal in self.omada.getAllPortals():
-            self.voucher_settings['portals'].append(portal['id'])
-
-    def getProfiles(self):
-        for profile in self.omada.getRateLimitProfiles():
-            if profile['name'] == self.voucher_settings['rateLimitName']:
-                self.voucher_settings['rateLimitId'] = profile['id']
 
     def wait_for(self, seconds):
         self.wait_timer = time.time()
@@ -155,13 +150,15 @@ class CoinSlot:
     def lcd_sleep(self):
         if self.sleep_timer > 0:
             sleep = time.time() - self.sleep_timer > self.sleep_timeout
-            if BACKLIGHT_STATE is BACKLIGHT_STATES['ON'] and sleep:
+            if sleep:
                 self.sleep_timer = 0
                 self.omada = None
                 self.stop_process()
-                turn_off_display()
-            elif BACKLIGHT_STATE is BACKLIGHT_STATES['OFF']:
-                turn_on_display()
+                display_menu(self.coin_credit, self.voucher_settings['multiplier'])
+
+    def debounce(self):
+        time = Util.getCurrentTime() - self.debounce_counter
+        return time > 40
 
     def input_callback(self, channel):
         try:
@@ -169,10 +166,11 @@ class CoinSlot:
             self.sleep_timer = time.time()
 
             # Coin slot input
-            if channel == self.coin_pin:
+            if channel == self.coin_pin and self.debounce():
                 self.wait_for(1)
                 self.coin_credit += 1
                 display_menu(self.coin_credit, self.voucher_settings['multiplier'])
+                self.debounce_counter = Util.getCurrentTime()
 
             # Button input
             elif channel == self.button_pin and self.is_ready():
@@ -199,7 +197,7 @@ class CoinSlot:
 
     def create_voucher(self):
         try:
-            if self.omada is None:
+            if not hasattr(self,'omada') or self.omada is None:
                 self.omada = Omada() # re-initialize Omada
                 
             result = self.omada.login()
@@ -207,18 +205,18 @@ class CoinSlot:
             if result is not None:
                 uniqueId = Util.createUniqueId(self.coin_credit, self.voucher_settings['multiplier'])
 
-                if len(self.voucher_settings['portals']) == 0:
-                    self.getPortals()
+                self.voucher_settings['name'] = uniqueId
+                self.voucher_settings['unitPrice'] = self.coin_credit
+                self.voucher_settings['duration'] = self.coin_credit * self.voucher_settings['multiplier']
+                self.voucher_settings['expirationTime'] = (time.time() + FIVE_DAYS_SECONDS) * 1000
 
-                if self.voucher_settings['rateLimitId'] is None:
-                    self.getProfiles()
-
-                self.voucher_settings['note'] = uniqueId
-
-                self.omada.createVoucher(json=self.voucher_settings)
-                for voucher in self.omada.getVoucher(voucherNote = uniqueId)['data']: # this will return only 1
-                    if voucher['note'] == uniqueId:
-                        self.new_voucher = voucher
+                voucherGroup = self.omada.createVoucherGroup(json=self.voucher_settings)
+                if voucherGroup is not None and 'id' in voucherGroup:
+                    voucherGroupId = voucherGroup['id']
+                    voucherGroupDetails = self.omada.getVoucherGroup(id = voucherGroupId)
+                    if voucherGroupDetails is not None and 'data' in voucherGroupDetails:
+                        for voucher in voucherGroupDetails['data']:
+                            self.new_voucher = voucher
 
                 self.omada.logout()
         except Exception:
