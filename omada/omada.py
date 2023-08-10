@@ -386,3 +386,15 @@ class Omada:
 	##
 	def getAllAuthedClients(self, site=None):
 		return self.__geterator( f'/hotspot/sites/{self.__findSiteId(site)}/clients?sorts.valid=desc', params={'filters.timeStart': timestamp() - 432000000})
+	
+	##
+	## Create Voucher Group
+	##
+	def createVoucherGroup(self, json, site=None):
+		return self.__post( f'/hotspot/sites/{self.__findSiteId(site)}/voucherGroups', json = json)
+	
+	##
+	## Create Voucher Group
+	##
+	def getVoucherGroup(self, id, site=None):
+		return self.__get( f'/hotspot/sites/{self.__findSiteId(site)}/voucherGroups/{id}')
