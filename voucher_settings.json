@@ -1,16 +1,18 @@
 {
-    "type": 1,
-    "maxUsers": 1,
-    "duration": 4320,
-    "downLimitEnable": 0,
-    "downLimit": 0,
-    "upLimitEnable": 0,
-    "upLimit": 0,
-    "trafficLimitEnable": 0,
-    "codeLength": 6,
-    "amount": 1,
-    "durationType": 1,
-    "portals": [],
-    "multiplier": 24,
-    "rateLimitName": "Customer Limit"
-}
+    "codeLength":6,
+    "amount":1,
+    "name":"Piso Wifi",
+    "type":1,
+    "rateLimitId":"642a67ba95c04d18d23adea6",
+    "trafficLimitEnable":false,
+    "trafficLimit":null,
+    "voucherValidityEnable":true,
+    "upTimeLimitEnable":true,
+    "durationType":1,
+    "description":null,
+    "maxUsers":1,
+    "multiplier":30,
+    "applyToAllPortals":true,
+    "currency":"PHP"
+ }
+ 
