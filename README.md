@@ -19,7 +19,7 @@ Piso-Wifi app will be using the omada-api, a public http server that will automa
 #### Create new voucher
 
 ```http
-  POST https://omada-api.fly.dev
+  POST https://omada-api.fly.dev/voucher
 ```
 **Required** parameters
 | Parameter | Type     | Description                |
