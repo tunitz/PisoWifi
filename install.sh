@@ -8,10 +8,7 @@ apt-get upgrade
 sudo apt-get install python3-pip python-smbus python3-dev i2c-tools
 
 # Install Python packages using pip
-pip3 install requests
-pip3 install OPi.GPIO
-pip3 install ping3
-pip3 install i2clcd
+pip3 install requests OPi.GPIO i2clcd
 
 # Check if overlays already exist in armbianEnv.txt
 if grep -q "overlays=" /boot/armbianEnv.txt; then
@@ -28,13 +25,13 @@ if ! grep -q "^i2c-dev$" /etc/modules; then
   echo "i2c-dev" | sudo tee -a /etc/modules
 fi
 
-chmod +x coin_slot.py
+chmod +x main.py
 
 # Set the file name and path
-file_path="/lib/systemd/system/coin_slot.service"
+file_path="/lib/systemd/system/main.service"
 
 # Set the Python script path
-script_path="/root/PisoWifi/coin_slot.py"
+script_path="/root/PisoWifi/main.py"
 
 # Set the Python script parent path
 script_parent_path="/root/PisoWifi"
@@ -63,6 +60,6 @@ fi
 sudo chmod 644 $file_path
 
 sudo systemctl daemon-reload
-sudo systemctl enable coin_slot.service
+sudo systemctl enable main.service
 
 sudo reboot
