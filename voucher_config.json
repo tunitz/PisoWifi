@@ -1,13 +1,9 @@
 {
-  "name": null,
-  "expirationTime": null,
-  "unitPrice": null,
-  "duration": null,
-  "rateLimitId": null,
-  "username": null,
-  "password": null,
-  "siteId": null,
-  "cid": null,
-  "storeName": null,
-  "multiplier": null
+  "username": "<Hotspot operator name>",
+  "password": "<Hotspot operator password>",
+  "siteId": "<Site id>",
+  "cid": "<Omada controller id>",
+  "rateLimitId": "<Rate Limit Profile id>",
+  "storeName": "Display name",
+  "multiplier": 30
 }

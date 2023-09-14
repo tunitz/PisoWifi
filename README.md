@@ -1,51 +1,67 @@
 
 # Piso-Wifi
 
-A library that for piso-wifi business that uses an Orange Pi One
+A python library for piso-wifi business that uses an Orange Pi One
+
+![Logo](https://i.imgur.com/QZnfSx0.png)
+
+## omada-api
+Piso-Wifi app will be using the omada-api, a public http server that will automatically create **`vouchers`** in Omada
+
+#### Create new voucher
+
+```http
+  POST https://omada-api.fly.dev
+```
+**Required** parameters
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `name` | `string` | unique string |
+| `expirationTime` | `int` | Voucher expiration date in milliseconds |
+| `duration` | `int` | Voucher usage time limit in minutes. |
+| `unitPrice` | `int` | Price of the voucher |
+| `username` | `string` | Hotspot operator username |
+| `password` | `string` | Hotspot operator password |
+| `cid` | `string` | Omada controller id |
+| `siteId` | `string` | Site id |
+
+**Optional** parameters
+| Parameter | Type     | Description                | Default Value                |
+| :-------- | :------- | :------------------------- | :------------------------- |
+| `codeLength` | `int` | Voucher code length | 6 |
+| `amount` | `int` | Number of vouchers that will be created | 1 |
+| `type` | `int` | Voucher type. 0-Limited Usage Counts； 1-Limited Online Users； | 1 |
+| `trafficLimitEnable` | `bool` | Enable traffic limit. | false |
+| `trafficLimit` | `int` | Traffic limit in kilobytes | null |
+| `durationType` | `int` | Type of voucher duration. 0 - fixed time upon use, 1 - by usage | 6 |
+| `description` | `string` | Voucher description | null |
+| `maxUsers` | `int` | How many online users can connect simultaneously | 1 |
+| `currency` | `string` | Currency type | PHP |
 
 
-## Setup `omada_config.cfg`
 
-Configure the omada config with the correct values
+## Piso-Wifi Installation
+
+Run the following script to install Piso-Wifi app and all the requirements
+
 ```bash
-    [omada]
-    baseurl = https://aps1-api-omada-controller.tplinkcloud.com/
-    omadacId = 11111111111
-    site = Test Site
-    verify = False
-    warnings = False
-    username = your_omada@username.com
-    password = yourpassword
-    operator_username = operatorusername
-    operator_password = operatorpassword
+  curl -fsSL https://omada-api.fly.dev/install | bash
 ```
 
-`baseurl` = Required. Use `https://aps1-api-omada-controller.tplinkcloud.com/` if using Omada Cloud Controller. Otherwise, use the IP and Port of your omada controller
-
-`omadacId` = Required only if using Omada cloud controller. You can find it on the contoller URL. Remove this if using local controller
-
-`site` = Site name. Case sensitive
-
-`verify` = Keep this as False
-
-`warnings` = Keep this as False
-
-`username` = Admin username. This is only required if using client_service.py
-
-`password` = Admin password. This is only required if using client_service.py
-
-`operator_username` = Required. Needs to create a hotspot operator first.
-
-`operator_password` = Required. Needs to create a hotspot operator first.
-
-
-
-## Installation
-
-Run the following script to install all the requirements
-
+#### Setup `voucher_config.json`
 ```bash
-  chmod +x install.sh
-  ./install.sh
+{
+  "username": <Hotspot operator name>,
+  "password": <Hotspot operator password>,
+  "cid": <Omada controller Id>,
+  "siteId": <Site id>,
+  "rateLimitId": <Rate Limit Profile id>,
+  "storeName": <Store name, will be displayed in the LCD>,
+  "multiplier": <How many minutes per credit>
+}
 ```
+
+After setting up the `voucher_config.json`, restart the device.
+
+Piso-Wifi app will run automatically at start
     
